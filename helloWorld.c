@@ -1,8 +1,7 @@
 #include <stdio.h>
 
-int main(){
+int nope(){
     printf("Hello world!\n");
-    remover essa linha
     /*Just a comment*/
     return 0;
 }
