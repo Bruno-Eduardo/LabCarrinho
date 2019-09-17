@@ -1,3 +1,3 @@
-cp *.c ArduinoFiles/
+cp *.c* ArduinoFiles/
 sudo arduino ArduinoFiles/ArduinoFiles.ino
-sudo mv ArduinoFiles/*.c ./
+sudo mv ArduinoFiles/*.c* ./
