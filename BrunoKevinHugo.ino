@@ -66,20 +66,23 @@ class PID {
 
   public:
     unsigned long lastTime = 0;
-    int ganhoI = 0;
+    double ganhoI = 0.0;
+    double ganhoD = 0.0;
+    float lastError = 0.0;
     
     PID (double, double, double, double, double);
 
     float calcOutputRight(float error) {
-      return max(min(offsetR + (Kp * error + Ki * ganhoI), OFFSET_RIGHT_MAX),OFFSET_RIGHT_MIN);
+      return max(min(offsetR + (Kp * error + Ki * ganhoI + Kd * ganhoD), OFFSET_RIGHT_MAX),OFFSET_RIGHT_MIN);
       /*Ki and Kd not implemented :(*/
     }
     float calcOutputLeft(float error) {
-      return max(min(offsetL - (Kp * error + Ki * ganhoI), OFFSET_LEFT_MAX),OFFSET_LEFT_MIN);
+      return max(min(offsetL - (Kp * error + Ki * ganhoI + Kd * ganhoD), OFFSET_LEFT_MAX),OFFSET_LEFT_MIN);
       /*Ki and Kd not implemented :(*/
     }
-    void newAcc(int error){
+    void newAcc(float error){
       ganhoI += error*(millis()-lastTime);
+      ganhoD = (error-lastError)/(millis()-lastTime)
       lastTime = millis();
     }
 };
