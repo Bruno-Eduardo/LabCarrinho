@@ -5,9 +5,14 @@
 #define OPTIC_FIRST_INDEX 2
 #define ENCODER_WINDOWS 20
 #define WHEEL_RADIUS 0.032
-#define P_GAIN 0.025
+// #define P_GAIN 0.0215
+#define P_GAIN 0.0214
 #define I_GAIN 0
-#define D_GAIN 0
+#define D_GAIN 100
+
+#define ERRO_GRANDE 3
+#define ERRO_MEDIO 2
+#define ERRO_PEQUENO 1
 
 //#define OFFSET_RIGHT_MAX 0.392795
 #define OFFSET_RIGHT_MAX 0.37
@@ -81,9 +86,13 @@ class PID {
       /*Ki and Kd not implemented :(*/
     }
     void newAcc(float error){
-      ganhoI += error*(millis()-lastTime);
-      ganhoD = (error-lastError)/(millis()-lastTime)
+      unsigned long menos = millis()-lastTime;
+//      Serial.print("Tempo:");
+//      Serial.println(menos);
+      ganhoI += error*(menos);
+      ganhoD = (error-lastError)/(millis()-lastTime);
       lastTime = millis();
+      lastError = error;
     }
 };
 
@@ -145,27 +154,27 @@ void loop() {
   int j,i;
 
        if (not(inputs[2]) && not(inputs[3]))
-     error = -2.5;
+     error = -(ERRO_GRANDE);
   else if (not(inputs[3]) && not(inputs[4]))
-     error = -2;
+     error = -(ERRO_MEDIO);
   else if (not(inputs[4]) && not(inputs[5]))
      error = 0;
   else if (not(inputs[5]) && not(inputs[6]))
-     error = 2;
+     error = (ERRO_MEDIO);
   else if (not(inputs[6]) && not(inputs[7]))
-     error = 2.5;
+     error = (ERRO_GRANDE);
   else if (not(inputs[4]))
-     error = -1;
+     error = -(ERRO_PEQUENO);
   else if (not(inputs[5]))
-     error = 1;
+     error = (ERRO_PEQUENO);
   else if (not(inputs[3]))
-     error = -2;
+     error = -(ERRO_MEDIO);
   else if (not(inputs[6]))
-     error = 2;
+     error = (ERRO_MEDIO);
   else if (not(inputs[2]))
-     error = -2.5;
+     error = -(ERRO_GRANDE);
   else if (not(inputs[7]))
-     error = 2.5;
+     error = (ERRO_GRANDE);
 
   pid.newAcc(error); 
   double outputRight = pid.calcOutputRight(error);
