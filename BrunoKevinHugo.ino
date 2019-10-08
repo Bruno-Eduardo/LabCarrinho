@@ -1,16 +1,19 @@
-#define BLUETOOTH_BAUDRATE 9600
+#define BLUETOOTH_BAUDRATE 115200
 #define PWM_MAX_VALUE 65535
 #define SENSOR_AMMOUNT 8
 #define OPTIC_AMMOUNT 6
 #define OPTIC_FIRST_INDEX 2
 #define ENCODER_WINDOWS 20
 #define WHEEL_RADIUS 0.032
-#define P_GAIN 200
-#define I_GAIN 1
+#define P_GAIN 0.025
+#define I_GAIN 0.0000001
 #define D_GAIN 0
 
-#define OFFSET_RIGHT 0.30
-#define OFFSET_LEFT 0.30
+//#define OFFSET_RIGHT_MAX 0.392795
+#define OFFSET_RIGHT_MAX 0.37
+#define OFFSET_RIGHT_MIN 0
+#define OFFSET_LEFT_MAX 0.35
+#define OFFSET_LEFT_MIN 0
 
 #define BLACK_WHITE_THRESHOLD 1000
 
@@ -41,7 +44,7 @@ class Motor {
       digitalWrite(rightPin, LOW);
     }
 
-    void setSpeed(float percentage) {
+    void setSpeed(double percentage) {
       pwmValue = int(percentage * PWM_MAX_VALUE);
       pwmWrite(PWMpin, pwmValue);
     }
@@ -65,15 +68,14 @@ class PID {
     unsigned long lastTime = 0;
     int ganhoI = 0;
     
-    
     PID (double, double, double, double, double);
 
-    float calcOutputRight(int error) {
-      return max(min(offsetR - (Kp * error + Ki * ganhoI), OFFSET_RIGHT),0);
+    float calcOutputRight(float error) {
+      return max(min(offsetR + (Kp * error + Ki * ganhoI), OFFSET_RIGHT_MAX),OFFSET_RIGHT_MIN);
       /*Ki and Kd not implemented :(*/
     }
-    float calcOutputLeft(int error) {
-      return max(min(offsetL + Kp * error + Ki * ganhoI, OFFSET_LEFT),0);
+    float calcOutputLeft(float error) {
+      return max(min(offsetL - (Kp * error + Ki * ganhoI), OFFSET_LEFT_MAX),OFFSET_LEFT_MIN);
       /*Ki and Kd not implemented :(*/
     }
     void newAcc(int error){
@@ -92,7 +94,7 @@ PID::PID (double Pgain, double Igain, double Dgain, double OffsetR, double Offse
 
 
 /*VARIAVEIS GLOBAIS, DSCP IC*/
-PID pid(P_GAIN, I_GAIN, D_GAIN, OFFSET_RIGHT, OFFSET_LEFT);
+PID pid(P_GAIN, I_GAIN, D_GAIN, OFFSET_RIGHT_MAX, OFFSET_LEFT_MAX);
 
 Motor MotorRight(PA8, PB12, PB13, 0);
 Motor MotorLeft (PA9, PB14, PB15, 0);
@@ -100,27 +102,27 @@ Motor MotorLeft (PA9, PB14, PB15, 0);
 float velRight;
 float velLeft;
 
+int inputs[SENSOR_AMMOUNT];
+int sensor_i = 0;
+
 void setup() {
 
   initPerif();
-
-  MotorLeft.setSpeed(0.25);
-  MotorRight.setSpeed(0.25);
 
   MotorLeft.foward();
   MotorRight.foward();
 }
 
 void loop() {
-  int inputs[SENSOR_AMMOUNT];
 
   /*Log inputs*/
-  for (int i = 0; i < SENSOR_AMMOUNT; i++) {
-    inputs[i] = analogRead(analogInPin[i])> BLACK_WHITE_THRESHOLD;
-    Serial.print("S ");
-    Serial.print(i);
-    Serial.print(": ");
-    Serial.println(inputs[i]);
+  for (sensor_i = 0; sensor_i < SENSOR_AMMOUNT; sensor_i++) {
+    delay(2);
+    inputs[sensor_i] = analogRead(analogInPin[sensor_i])> BLACK_WHITE_THRESHOLD;
+//    Serial.print("S ");
+//    Serial.print(sensor_i);
+//    Serial.print(": ");
+//    Serial.println(analogRead(analogInPin[sensor_i]));
   }
   
   /*end of line?*/
@@ -137,25 +139,46 @@ void loop() {
 
   /*Calc error*/
   int error = 0;
-  for (int i = OPTIC_FIRST_INDEX; i < 5; i++){
-    error += inputs[i] - inputs[i + (OPTIC_AMMOUNT / 2)];
-  }
-  
+  int j,i;
+
+       if (not(inputs[2]) && not(inputs[3]))
+     error = -2.5;
+  else if (not(inputs[3]) && not(inputs[4]))
+     error = -2;
+  else if (not(inputs[4]) && not(inputs[5]))
+     error = 0;
+  else if (not(inputs[5]) && not(inputs[6]))
+     error = 2;
+  else if (not(inputs[6]) && not(inputs[7]))
+     error = 2.5;
+  else if (not(inputs[4]))
+     error = -1;
+  else if (not(inputs[5]))
+     error = 1;
+  else if (not(inputs[3]))
+     error = -2;
+  else if (not(inputs[6]))
+     error = 2;
+  else if (not(inputs[2]))
+     error = -2.5;
+  else if (not(inputs[7]))
+     error = 2.5;
+
   pid.newAcc(error); 
-  float outputRight = pid.calcOutputRight(error);
-  float outputLeft = pid.calcOutputLeft(error);
+  double outputRight = pid.calcOutputRight(error);
+  double outputLeft = pid.calcOutputLeft(error);
   
   Serial.print("E: ");
   Serial.println(error);
   Serial.print("OR: ");
-  Serial.println(outputRight);
+  Serial.println(outputRight*PWM_MAX_VALUE);
   Serial.print("OL: ");
-  Serial.println(outputLeft);
+  Serial.println(outputLeft*PWM_MAX_VALUE);
 
   /*apply PID*/
   
-  MotorLeft.setSpeed(outputLeft*65535);
-  MotorRight.setSpeed(outputRight*65535);
+  MotorLeft.setSpeed(outputLeft);
+  MotorRight.setSpeed(outputRight);
 }
 
 void initPerif() {
