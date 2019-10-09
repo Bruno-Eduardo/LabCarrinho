@@ -5,14 +5,19 @@
 #define OPTIC_FIRST_INDEX 2
 #define ENCODER_WINDOWS 20
 #define WHEEL_RADIUS 0.032
-#define P_GAIN 0.025
-#define I_GAIN 0.0000001
-#define D_GAIN 0
+// #define P_GAIN 0.0215
+#define P_GAIN 0.0214
+#define I_GAIN 0
+#define D_GAIN 100
+
+#define ERRO_GRANDE 3
+#define ERRO_MEDIO 2
+#define ERRO_PEQUENO 1
 
 //#define OFFSET_RIGHT_MAX 0.392795
-#define OFFSET_RIGHT_MAX 0.37
+#define OFFSET_RIGHT_MAX 0.45
 #define OFFSET_RIGHT_MIN 0
-#define OFFSET_LEFT_MAX 0.35
+#define OFFSET_LEFT_MAX 0.43
 #define OFFSET_LEFT_MIN 0
 
 #define BLACK_WHITE_THRESHOLD 1000
@@ -66,21 +71,28 @@ class PID {
 
   public:
     unsigned long lastTime = 0;
-    int ganhoI = 0;
+    double ganhoI = 0.0;
+    double ganhoD = 0.0;
+    float lastError = 0.0;
     
     PID (double, double, double, double, double);
 
     float calcOutputRight(float error) {
-      return max(min(offsetR + (Kp * error + Ki * ganhoI), OFFSET_RIGHT_MAX),OFFSET_RIGHT_MIN);
+      return max(min(offsetR + (Kp * error + Ki * ganhoI + Kd * ganhoD), OFFSET_RIGHT_MAX),OFFSET_RIGHT_MIN);
       /*Ki and Kd not implemented :(*/
     }
     float calcOutputLeft(float error) {
-      return max(min(offsetL - (Kp * error + Ki * ganhoI), OFFSET_LEFT_MAX),OFFSET_LEFT_MIN);
+      return max(min(offsetL - (Kp * error + Ki * ganhoI + Kd * ganhoD), OFFSET_LEFT_MAX),OFFSET_LEFT_MIN);
       /*Ki and Kd not implemented :(*/
     }
-    void newAcc(int error){
-      ganhoI += error*(millis()-lastTime);
+    void newAcc(float error){
+      unsigned long menos = millis()-lastTime;
+//      Serial.print("Tempo:");
+//      Serial.println(menos);
+      ganhoI += error*(menos);
+      ganhoD = (error-lastError)/(millis()-lastTime);
       lastTime = millis();
+      lastError = error;
     }
 };
 
@@ -142,27 +154,27 @@ void loop() {
   int j,i;
 
        if (not(inputs[2]) && not(inputs[3]))
-     error = -2.5;
+     error = -(ERRO_GRANDE);
   else if (not(inputs[3]) && not(inputs[4]))
-     error = -2;
+     error = -(ERRO_MEDIO);
   else if (not(inputs[4]) && not(inputs[5]))
      error = 0;
   else if (not(inputs[5]) && not(inputs[6]))
-     error = 2;
+     error = (ERRO_MEDIO);
   else if (not(inputs[6]) && not(inputs[7]))
-     error = 2.5;
+     error = (ERRO_GRANDE);
   else if (not(inputs[4]))
-     error = -1;
+     error = -(ERRO_PEQUENO);
   else if (not(inputs[5]))
-     error = 1;
+     error = (ERRO_PEQUENO);
   else if (not(inputs[3]))
-     error = -2;
+     error = -(ERRO_MEDIO);
   else if (not(inputs[6]))
-     error = 2;
+     error = (ERRO_MEDIO);
   else if (not(inputs[2]))
-     error = -2.5;
+     error = -(ERRO_GRANDE);
   else if (not(inputs[7]))
-     error = 2.5;
+     error = (ERRO_GRANDE);
 
   pid.newAcc(error); 
   double outputRight = pid.calcOutputRight(error);
