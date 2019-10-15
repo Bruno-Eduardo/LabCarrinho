@@ -74,23 +74,23 @@ class PID {
     double ganhoI = 0.0;
     double ganhoD = 0.0;
     float lastError = 0.0;
-    
+
     PID (double, double, double, double, double);
 
     float calcOutputRight(float error) {
-      return max(min(offsetR + (Kp * error + Ki * ganhoI + Kd * ganhoD), OFFSET_RIGHT_MAX),OFFSET_RIGHT_MIN);
+      return max(min(offsetR + (Kp * error + Ki * ganhoI + Kd * ganhoD), OFFSET_RIGHT_MAX), OFFSET_RIGHT_MIN);
       /*Ki and Kd not implemented :(*/
     }
     float calcOutputLeft(float error) {
-      return max(min(offsetL - (Kp * error + Ki * ganhoI + Kd * ganhoD), OFFSET_LEFT_MAX),OFFSET_LEFT_MIN);
+      return max(min(offsetL - (Kp * error + Ki * ganhoI + Kd * ganhoD), OFFSET_LEFT_MAX), OFFSET_LEFT_MIN);
       /*Ki and Kd not implemented :(*/
     }
-    void newAcc(float error){
-      unsigned long menos = millis()-lastTime;
-//      Serial.print("Tempo:");
-//      Serial.println(menos);
-      ganhoI += error*(menos);
-      ganhoD = (error-lastError)/(millis()-lastTime);
+    void newAcc(float error) {
+      unsigned long menos = millis() - lastTime;
+      //      Serial.print("Tempo:");
+      //      Serial.println(menos);
+      ganhoI += error * (menos);
+      ganhoD = (error - lastError) / (millis() - lastTime);
       lastTime = millis();
       lastError = error;
     }
@@ -116,6 +116,9 @@ float velLeft;
 
 int inputs[SENSOR_AMMOUNT];
 int sensor_i = 0;
+short endOfLine = 0;
+unsigned long tempo;
+int lastError = 0;
 
 void setup() {
 
@@ -130,67 +133,84 @@ void loop() {
   /*Log inputs*/
   for (sensor_i = 0; sensor_i < SENSOR_AMMOUNT; sensor_i++) {
     delay(2);
-    inputs[sensor_i] = analogRead(analogInPin[sensor_i])> BLACK_WHITE_THRESHOLD;
-//    Serial.print("S ");
-//    Serial.print(sensor_i);
-//    Serial.print(": ");
-//    Serial.println(analogRead(analogInPin[sensor_i]));
+    inputs[sensor_i] = analogRead(analogInPin[sensor_i]) > BLACK_WHITE_THRESHOLD;
+    //    Serial.print("S ");
+    //    Serial.print(sensor_i);
+    //    Serial.print(": ");
+    //    Serial.println(analogRead(analogInPin[sensor_i]));
   }
-  
+
   /*end of line?*/
+
   for (int i = 2; i < SENSOR_AMMOUNT; i++) {
-    if (inputs[i] > 0)
+    if (inputs[i] > 0) {
+      endOfLine = 0;
       break;
-    if (i==SENSOR_AMMOUNT-1)
-      while(1){
+    }
+    else if (i == SENSOR_AMMOUNT - 1) {
+      if (endOfLine == 0) {
+        endOfLine = 1;
+        tempo = millis();
+      }
+      else if (endOfLine == 1 && ((millis() - tempo) > (unsigned long)100)) {
+        while (1) {
           MotorLeft.setSpeed(0);
           MotorRight.setSpeed(0);
+        }
       }
+    }
   }
-  
+
+
+
 
   /*Calc error*/
   int error = 0;
-  int j,i;
+  int j, i;
 
-       if (not(inputs[2]) && not(inputs[3]))
-     error = -(ERRO_GRANDE);
+  if (not(inputs[2]) && not(inputs[3]))
+    error = -(ERRO_GRANDE);
   else if (not(inputs[3]) && not(inputs[4]))
-     error = -(ERRO_MEDIO);
+    error = -(ERRO_MEDIO);
   else if (not(inputs[4]) && not(inputs[5]))
-     error = 0;
+    error = 0;
   else if (not(inputs[5]) && not(inputs[6]))
-     error = (ERRO_MEDIO);
+    error = (ERRO_MEDIO);
   else if (not(inputs[6]) && not(inputs[7]))
-     error = (ERRO_GRANDE);
+    error = (ERRO_GRANDE);
   else if (not(inputs[4]))
-     error = -(ERRO_PEQUENO);
+    error = -(ERRO_PEQUENO);
   else if (not(inputs[5]))
-     error = (ERRO_PEQUENO);
+    error = (ERRO_PEQUENO);
   else if (not(inputs[3]))
-     error = -(ERRO_MEDIO);
+    error = -(ERRO_MEDIO);
   else if (not(inputs[6]))
-     error = (ERRO_MEDIO);
+    error = (ERRO_MEDIO);
   else if (not(inputs[2]))
-     error = -(ERRO_GRANDE);
+    error = -(ERRO_GRANDE);
   else if (not(inputs[7]))
-     error = (ERRO_GRANDE);
+    error = (ERRO_GRANDE);
 
-  pid.newAcc(error); 
+  if (endOfLine)
+    error = lastError;
+
+  pid.newAcc(error);
   double outputRight = pid.calcOutputRight(error);
   double outputLeft = pid.calcOutputLeft(error);
-  
+
   Serial.print("E: ");
   Serial.println(error);
   Serial.print("OR: ");
-  Serial.println(outputRight*PWM_MAX_VALUE);
+  Serial.println(outputRight * PWM_MAX_VALUE);
   Serial.print("OL: ");
-  Serial.println(outputLeft*PWM_MAX_VALUE);
+  Serial.println(outputLeft * PWM_MAX_VALUE);
 
   /*apply PID*/
-  
+
   MotorLeft.setSpeed(outputLeft);
   MotorRight.setSpeed(outputRight);
+
+  lastError = error;
 }
 
 void initPerif() {
