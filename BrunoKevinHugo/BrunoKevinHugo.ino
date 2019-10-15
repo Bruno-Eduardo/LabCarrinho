@@ -6,7 +6,7 @@
 #define ENCODER_WINDOWS 20
 #define WHEEL_RADIUS 0.032
 // #define P_GAIN 0.0215
-#define P_GAIN 0.1
+#define P_GAIN 0.2
 #define I_GAIN 0
 #define D_GAIN 100
 
