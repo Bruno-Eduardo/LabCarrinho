@@ -5,22 +5,22 @@
 #define OPTIC_FIRST_INDEX 2
 #define ENCODER_WINDOWS 20
 #define WHEEL_RADIUS 0.032
-// #define P_GAIN 0.0215
-#define P_GAIN 0.3
+// #define P_GAIN 1
+#define P_GAIN 0.04
 #define I_GAIN 0
 #define D_GAIN 100
 
-#define ERRO_GRANDE 3
-#define ERRO_MEDIO 2
+#define ERRO_GRANDE 20
+#define ERRO_MEDIO 3
 #define ERRO_PEQUENO 1
 
 //#define OFFSET_RIGHT_MAX 0.392795
-#define OFFSET_RIGHT_MAX 0.36
+#define OFFSET_RIGHT_MAX 0.5
 #define OFFSET_RIGHT_MIN 0
-#define OFFSET_LEFT_MAX 0.34
+#define OFFSET_LEFT_MAX 0.48
 #define OFFSET_LEFT_MIN 0
 
-#define BLACK_WHITE_THRESHOLD 1000
+#define BLACK_WHITE_THRESHOLD 500
 
 const short analogInPin[] = {PA0, PA1, PA4, PA5, PA6, PA7, PB0, PB1};
 
@@ -78,11 +78,11 @@ class PID {
     PID (double, double, double, double, double);
 
     float calcOutputRight(float error) {
-      return max(min(offsetR + (Kp * error + Ki * ganhoI + Kd * ganhoD), OFFSET_RIGHT_MAX), OFFSET_RIGHT_MIN);
+      return max(min(offsetR + (Kp * error + Ki * ganhoI + Kd * ganhoD), 0.6), OFFSET_RIGHT_MIN);
       /*Ki and Kd not implemented :(*/
     }
     float calcOutputLeft(float error) {
-      return max(min(offsetL - (Kp * error + Ki * ganhoI + Kd * ganhoD), OFFSET_LEFT_MAX), OFFSET_LEFT_MIN);
+      return max(min(offsetL - (Kp * error + Ki * ganhoI + Kd * ganhoD), 0.62), OFFSET_LEFT_MIN);
       /*Ki and Kd not implemented :(*/
     }
     void newAcc(float error) {
@@ -90,7 +90,9 @@ class PID {
       //      Serial.print("Tempo:");
       //      Serial.println(menos);
       ganhoI += error * (menos);
-      ganhoD = (error - lastError) / (millis() - lastTime);
+      ganhoD = (error - lastError);
+      Serial.print("ganhoD---------------");
+      Serial.println(ganhoD);
       lastTime = millis();
       lastError = error;
     }
@@ -119,6 +121,7 @@ int sensor_i = 0;
 short endOfLine = 0;
 unsigned long tempo;
 int lastError = 0;
+short fistBoost =1;
 
 void setup() {
 
@@ -126,10 +129,13 @@ void setup() {
 
   MotorLeft.foward();
   MotorRight.foward();
+
+  MotorLeft.setSpeed(0.5);
+  MotorRight.setSpeed(0.5);
 }
 
 void loop() {
-
+  delay(50);
   /*Log inputs*/
   for (sensor_i = 0; sensor_i < SENSOR_AMMOUNT; sensor_i++) {
     delay(2);
@@ -141,6 +147,18 @@ void loop() {
   }
 
   /*end of line?*/
+  int whites = 0;
+  for (int i = 2; i < SENSOR_AMMOUNT; i++) {
+    if (inputs[i] == 0) {
+      whites++;
+    }
+    if (whites >= 3 && fistBoost) {
+      MotorLeft.setSpeed(0);
+      MotorRight.setSpeed(0.5);
+      fistBoost = 0;
+      delay(5);
+    }
+  }
 
   for (int i = 2; i < SENSOR_AMMOUNT; i++) {
     if (inputs[i] > 0) {
@@ -162,10 +180,8 @@ void loop() {
   }
 
 
-
-
   /*Calc error*/
-  int error = 0;
+  int error = lastError;
   int j, i;
 
   if (not(inputs[2]) && not(inputs[3]))
