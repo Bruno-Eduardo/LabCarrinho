@@ -6,11 +6,11 @@
 #define ENCODER_WINDOWS 20
 #define WHEEL_RADIUS 0.032
 // #define P_GAIN 1
-#define P_GAIN 0.04
+#define P_GAIN .07
 #define I_GAIN 0
 #define D_GAIN 100
 
-#define ERRO_GRANDE 20
+#define ERRO_GRANDE 6
 #define ERRO_MEDIO 3
 #define ERRO_PEQUENO 1
 
@@ -21,6 +21,8 @@
 #define OFFSET_LEFT_MIN 0
 
 #define BLACK_WHITE_THRESHOLD 500
+
+#define TENSAO_PILHA 5.2
 
 const short analogInPin[] = {PA0, PA1, PA4, PA5, PA6, PA7, PB0, PB1};
 
@@ -51,7 +53,9 @@ class Motor {
 
     void setSpeed(double percentage) {
       pwmValue = int(percentage * PWM_MAX_VALUE);
-      pwmWrite(PWMpin, pwmValue);
+      pwmWrite(PWMpin, pwmValue * 5.2/TENSAO_PILHA);
+      Serial.print("velsetted: ");
+      Serial.println(pwmValue * 5.2/TENSAO_PILHA);
     }
 };
 
@@ -78,11 +82,11 @@ class PID {
     PID (double, double, double, double, double);
 
     float calcOutputRight(float error) {
-      return max(min(offsetR + (Kp * error + Ki * ganhoI + Kd * ganhoD), 0.6), OFFSET_RIGHT_MIN);
+      return max(min(offsetR + (Kp * error + Ki * 0 + Kd * ganhoD), 0.62), OFFSET_RIGHT_MIN);
       /*Ki and Kd not implemented :(*/
     }
     float calcOutputLeft(float error) {
-      return max(min(offsetL - (Kp * error + Ki * ganhoI + Kd * ganhoD), 0.62), OFFSET_LEFT_MIN);
+      return max(min(offsetL - (Kp * error + Ki * 0 + Kd * ganhoD), 0.6), OFFSET_LEFT_MIN);
       /*Ki and Kd not implemented :(*/
     }
     void newAcc(float error) {
@@ -135,7 +139,7 @@ void setup() {
 }
 
 void loop() {
-  delay(50);
+  //delay(50);
   /*Log inputs*/
   for (sensor_i = 0; sensor_i < SENSOR_AMMOUNT; sensor_i++) {
     delay(2);
@@ -155,7 +159,7 @@ void loop() {
     if (whites >= 3 && fistBoost) {
       MotorLeft.setSpeed(0);
       MotorRight.setSpeed(0.5);
-      fistBoost = 0;
+      fistBoost = 1;
       delay(5);
     }
   }
@@ -184,16 +188,18 @@ void loop() {
   int error = lastError;
   int j, i;
 
-  if (not(inputs[2]) && not(inputs[3]))
-    error = -(ERRO_GRANDE);
-  else if (not(inputs[3]) && not(inputs[4]))
-    error = -(ERRO_MEDIO);
-  else if (not(inputs[4]) && not(inputs[5]))
+  if (0)
+      Serial.println("impossivel");
+  else if (not(inputs[5]) && not(inputs[4]))
     error = 0;
-  else if (not(inputs[5]) && not(inputs[6]))
+  else if (not(inputs[6]) && not(inputs[5]))
     error = (ERRO_MEDIO);
-  else if (not(inputs[6]) && not(inputs[7]))
+  else if (not(inputs[4]) && not(inputs[3]))
+    error = -(ERRO_MEDIO);
+  else if (not(inputs[7]) && not(inputs[6]))
     error = (ERRO_GRANDE);
+  else if (not(inputs[3]) && not(inputs[2]))
+    error = -(ERRO_GRANDE);
   else if (not(inputs[4]))
     error = -(ERRO_PEQUENO);
   else if (not(inputs[5]))
