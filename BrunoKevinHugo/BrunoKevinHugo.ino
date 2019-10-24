@@ -6,19 +6,22 @@
 #define ENCODER_WINDOWS 20
 #define WHEEL_RADIUS 0.032
 // #define P_GAIN 1
-#define P_GAIN .07
+#define P_GAIN 0.1
 #define I_GAIN 0
 #define D_GAIN 100
 
-#define ERRO_GRANDE 6
+#define ERRO_GRANDE 4
 #define ERRO_MEDIO 3
 #define ERRO_PEQUENO 1
 
-//#define OFFSET_RIGHT_MAX 0.392795
-#define OFFSET_RIGHT_MAX 0.5
+//#define OFFSET_RIGHT_MEAN 0.392795
+#define OFFSET_RIGHT_MEAN 0.32
 #define OFFSET_RIGHT_MIN 0
-#define OFFSET_LEFT_MAX 0.48
+#define OFFSET_LEFT_MEAN 0.3
 #define OFFSET_LEFT_MIN 0
+
+#define OFFSET_RIGHT_MAX 0.32
+#define OFFSET_LEFT_MAX 0.3
 
 #define BLACK_WHITE_THRESHOLD 500
 
@@ -54,8 +57,8 @@ class Motor {
     void setSpeed(double percentage) {
       pwmValue = int(percentage * PWM_MAX_VALUE);
       pwmWrite(PWMpin, pwmValue * 5.2/TENSAO_PILHA);
-      Serial.print("velsetted: ");
-      Serial.println(pwmValue * 5.2/TENSAO_PILHA);
+      /*Serial.print("velsetted: ");
+      Serial.println(pwmValue * 5.2/TENSAO_PILHA);*/
     }
 };
 
@@ -82,11 +85,11 @@ class PID {
     PID (double, double, double, double, double);
 
     float calcOutputRight(float error) {
-      return max(min(offsetR + (Kp * error + Ki * 0 + Kd * ganhoD), 0.62), OFFSET_RIGHT_MIN);
+      return max(min(offsetR + (Kp * error + Ki * 0 + Kd * ganhoD), OFFSET_RIGHT_MAX), OFFSET_RIGHT_MIN);
       /*Ki and Kd not implemented :(*/
     }
     float calcOutputLeft(float error) {
-      return max(min(offsetL - (Kp * error + Ki * 0 + Kd * ganhoD), 0.6), OFFSET_LEFT_MIN);
+      return max(min(offsetL - (Kp * error + Ki * 0 + Kd * ganhoD), OFFSET_LEFT_MAX) , OFFSET_LEFT_MIN );
       /*Ki and Kd not implemented :(*/
     }
     void newAcc(float error) {
@@ -95,8 +98,8 @@ class PID {
       //      Serial.println(menos);
       ganhoI += error * (menos);
       ganhoD = (error - lastError);
-      Serial.print("ganhoD---------------");
-      Serial.println(ganhoD);
+      /*Serial.print("ganhoD---------------");
+      Serial.println(ganhoD);*/
       lastTime = millis();
       lastError = error;
     }
@@ -112,7 +115,7 @@ PID::PID (double Pgain, double Igain, double Dgain, double OffsetR, double Offse
 
 
 /*VARIAVEIS GLOBAIS, DSCP IC*/
-PID pid(P_GAIN, I_GAIN, D_GAIN, OFFSET_RIGHT_MAX, OFFSET_LEFT_MAX);
+PID pid(P_GAIN, I_GAIN, D_GAIN, OFFSET_RIGHT_MEAN, OFFSET_LEFT_MEAN);
 
 Motor MotorRight(PA8, PB12, PB13, 0);
 Motor MotorLeft (PA9, PB14, PB15, 0);
@@ -152,17 +155,6 @@ void loop() {
 
   /*end of line?*/
   int whites = 0;
-  for (int i = 2; i < SENSOR_AMMOUNT; i++) {
-    if (inputs[i] == 0) {
-      whites++;
-    }
-    if (whites >= 3 && fistBoost) {
-      MotorLeft.setSpeed(0);
-      MotorRight.setSpeed(0.5);
-      fistBoost = 1;
-      delay(5);
-    }
-  }
 
   for (int i = 2; i < SENSOR_AMMOUNT; i++) {
     if (inputs[i] > 0) {
@@ -189,7 +181,7 @@ void loop() {
   int j, i;
 
   if (0)
-      Serial.println("impossivel");
+     ;
   else if (not(inputs[5]) && not(inputs[4]))
     error = 0;
   else if (not(inputs[6]) && not(inputs[5]))
@@ -220,12 +212,12 @@ void loop() {
   double outputRight = pid.calcOutputRight(error);
   double outputLeft = pid.calcOutputLeft(error);
 
-  Serial.print("E: ");
+/*  Serial.print("E: ");
   Serial.println(error);
   Serial.print("OR: ");
   Serial.println(outputRight * PWM_MAX_VALUE);
   Serial.print("OL: ");
-  Serial.println(outputLeft * PWM_MAX_VALUE);
+  Serial.println(outputLeft * PWM_MAX_VALUE);*/
 
   /*apply PID*/
 
@@ -250,7 +242,6 @@ void initPerif() {
   //  attachInterrupt(PA0,encoderLeftHandler,RISING);
   //  attachInterrupt(PA1,encoderRightHandler,RISING);
 
-  Serial.begin(BLUETOOTH_BAUDRATE);
 }
 //
 //void encoderLeftHandler(){
