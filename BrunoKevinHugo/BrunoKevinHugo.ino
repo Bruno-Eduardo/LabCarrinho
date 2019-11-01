@@ -6,9 +6,9 @@
 #define ENCODER_WINDOWS 20
 #define WHEEL_RADIUS 0.032
 // #define P_GAIN 1
-#define P_GAIN 0.1
+#define P_GAIN 1000/1000.0
 #define I_GAIN 0
-#define D_GAIN 100
+#define D_GAIN 1000/1000.0
 
 #define ERRO_GRANDE 4
 #define ERRO_MEDIO 3
@@ -27,7 +27,11 @@
 
 #define TENSAO_PILHA 5.2
 
+#define NEW_DERIVATIVE_CONFIG 1
+#define DERIVATIVE_BOOST_AMOUNT 8
+
 const short analogInPin[] = {PA0, PA1, PA4, PA5, PA6, PA7, PB0, PB1};
+float DerivativeBoosts[] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 class Motor {
 
@@ -94,12 +98,28 @@ class PID {
     }
     void newAcc(float error) {
       unsigned long menos = millis() - lastTime;
+      static short boostCounter = DERIVATIVE_BOOST_AMOUNT;
       //      Serial.print("Tempo:");
       //      Serial.println(menos);
-      ganhoI += error * (menos);
+      ganhoI += error;
       ganhoD = (error - lastError);
       /*Serial.print("ganhoD---------------");
       Serial.println(ganhoD);*/
+      
+      if (NEW_DERIVATIVE_CONFIG) {
+        if (ganhoD) {
+          for (int i = 0; i < DERIVATIVE_BOOST_AMOUNT; i++) {
+            DerivativeBoosts[i] = pow(1, i);
+          }
+          boostCounter = 0;
+        }
+        if (boostCounter < DERIVATIVE_BOOST_AMOUNT){
+            ganhoD = DerivativeBoosts[boostCounter++];
+            Serial.print("boosting derivative: ");
+            Serial.print(DERIVATIVE_BOOST_AMOUNT-boostCounter);
+            Serial.println(" remaining...");
+        }
+      }
       lastTime = millis();
       lastError = error;
     }
