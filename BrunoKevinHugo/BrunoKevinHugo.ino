@@ -30,6 +30,8 @@
 #define NEW_DERIVATIVE_CONFIG 1
 #define DERIVATIVE_BOOST_AMOUNT 8
 
+#define MAX_LOOPS 2
+
 const short analogInPin[] = {PA0, PA1, PA4, PA5, PA6, PA7, PB0, PB1};
 float DerivativeBoosts[] = {0, 0, 0, 0, 0, 0, 0, 0};
 
@@ -60,9 +62,9 @@ class Motor {
 
     void setSpeed(double percentage) {
       pwmValue = int(percentage * PWM_MAX_VALUE);
-      pwmWrite(PWMpin, pwmValue * 5.2/TENSAO_PILHA);
+      pwmWrite(PWMpin, pwmValue * 5.2 / TENSAO_PILHA);
       /*Serial.print("velsetted: ");
-      Serial.println(pwmValue * 5.2/TENSAO_PILHA);*/
+        Serial.println(pwmValue * 5.2/TENSAO_PILHA);*/
     }
 };
 
@@ -104,8 +106,8 @@ class PID {
       ganhoI += error;
       ganhoD = (error - lastError);
       /*Serial.print("ganhoD---------------");
-      Serial.println(ganhoD);*/
-      
+        Serial.println(ganhoD);*/
+
       if (NEW_DERIVATIVE_CONFIG) {
         if (ganhoD) {
           for (int i = 0; i < DERIVATIVE_BOOST_AMOUNT; i++) {
@@ -113,11 +115,11 @@ class PID {
           }
           boostCounter = 0;
         }
-        if (boostCounter < DERIVATIVE_BOOST_AMOUNT){
-            ganhoD = DerivativeBoosts[boostCounter++];
-            Serial.print("boosting derivative: ");
-            Serial.print(DERIVATIVE_BOOST_AMOUNT-boostCounter);
-            Serial.println(" remaining...");
+        if (boostCounter < DERIVATIVE_BOOST_AMOUNT) {
+          ganhoD = DerivativeBoosts[boostCounter++];
+          Serial.print("boosting derivative: ");
+          Serial.print(DERIVATIVE_BOOST_AMOUNT - boostCounter);
+          Serial.println(" remaining...");
         }
       }
       lastTime = millis();
@@ -148,7 +150,8 @@ int sensor_i = 0;
 short endOfLine = 0;
 unsigned long tempo;
 int lastError = 0;
-short fistBoost =1;
+short fistBoost = 1;
+short loopsDone = 0;
 
 void setup() {
 
@@ -187,9 +190,12 @@ void loop() {
         tempo = millis();
       }
       else if (endOfLine == 1 && ((millis() - tempo) > (unsigned long)100)) {
-        while (1) {
-          MotorLeft.setSpeed(0);
-          MotorRight.setSpeed(0);
+        loopsDone++;
+        if (loopsDone >= MAX_LOOPS) {
+          while (1) {
+            MotorLeft.setSpeed(0);
+            MotorRight.setSpeed(0);
+          }
         }
       }
     }
@@ -201,7 +207,7 @@ void loop() {
   int j, i;
 
   if (0)
-     ;
+    ;
   else if (not(inputs[5]) && not(inputs[4]))
     error = 0;
   else if (not(inputs[6]) && not(inputs[5]))
@@ -232,12 +238,12 @@ void loop() {
   double outputRight = pid.calcOutputRight(error);
   double outputLeft = pid.calcOutputLeft(error);
 
-/*  Serial.print("E: ");
-  Serial.println(error);
-  Serial.print("OR: ");
-  Serial.println(outputRight * PWM_MAX_VALUE);
-  Serial.print("OL: ");
-  Serial.println(outputLeft * PWM_MAX_VALUE);*/
+  /*  Serial.print("E: ");
+    Serial.println(error);
+    Serial.print("OR: ");
+    Serial.println(outputRight * PWM_MAX_VALUE);
+    Serial.print("OL: ");
+    Serial.println(outputLeft * PWM_MAX_VALUE);*/
 
   /*apply PID*/
 
