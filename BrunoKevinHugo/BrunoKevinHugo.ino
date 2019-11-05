@@ -8,10 +8,10 @@
 // #define P_GAIN 1
 #define P_GAIN 1000/1000.0
 #define I_GAIN 0
-#define D_GAIN 1000/1000.0
+#define D_GAIN 750/1000.0
 
-#define ERRO_GRANDE 4
-#define ERRO_MEDIO 3
+#define ERRO_GRANDE 3
+#define ERRO_MEDIO 2
 #define ERRO_PEQUENO 1
 
 //#define OFFSET_RIGHT_MEAN 0.392795
@@ -153,6 +153,20 @@ int lastError = 0;
 short fistBoost = 1;
 short loopsDone = 0;
 
+short allSensorAreWhite() {
+  for (sensor_i = 0; sensor_i < SENSOR_AMMOUNT; sensor_i++) {
+    delay(2);
+    inputs[sensor_i] = analogRead(analogInPin[sensor_i]) > BLACK_WHITE_THRESHOLD;
+  }
+
+  for (int i = 2; i < SENSOR_AMMOUNT; i++) {
+    if (inputs[i] > 0) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
 void setup() {
 
   initPerif();
@@ -195,6 +209,16 @@ void loop() {
           while (1) {
             MotorLeft.setSpeed(0);
             MotorRight.setSpeed(0);
+          }
+        }
+        else {
+          while (allSensorAreWhite()) {
+            int error = lastError;
+            pid.newAcc(error);
+            double outputRight = pid.calcOutputRight(error);
+            double outputLeft = pid.calcOutputLeft(error);
+            MotorLeft.setSpeed(outputLeft);
+            MotorRight.setSpeed(outputRight);
           }
         }
       }
